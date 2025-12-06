@@ -1,0 +1,9 @@
+{
+    "name": "Pokédex de Noa",
+    "short_name": "Pokédex",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#cc0000",
+    "description": "Mon Pokédex personnel pour lister les Pokémon et leurs détails."
+}
