@@ -16,7 +16,7 @@
             min-height: 100vh; 
             margin: 0; 
             color: white;
-            padding-bottom: 50px; /* Pour éviter que le contenu ne touche le bas */
+            padding-bottom: 50px; 
         }
         .header { 
             padding: 20px; 
@@ -33,7 +33,7 @@
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
             gap: 15px;
             padding: 20px;
-            max-width: 1200px; /* Augmentation de la largeur */
+            max-width: 1200px; 
             width: 100%;
         }
         
@@ -54,7 +54,7 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
 
-        /* 💥 DISTINCTION LÉGENDAIRE 💥 */
+        /* DISTINCTION LÉGENDAIRE */
         .pokemon-card.legendary {
             border: 3px solid gold;
             box-shadow: 0 0 15px gold;
@@ -96,13 +96,16 @@
 <body>
 
     <div id="loading-overlay">
-        Chargement de tous les Pokémon... (Merci de patienter)
+        Chargement de tous les Pokémon (plus de 1000)...
     </div>
 
     <div class="header">
         <h1>Pokédex de Noa</h1>
         <p>Liste complète des Pokémon existants et leurs détails.</p>
     </div>
+
+    <input type="text" id="searchBar" placeholder="Rechercher un Pokémon (Bulbizarre, Salamèche...)" 
+           onkeyup="filtrerPokemons()" style="width: 90%; max-width: 600px; padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd;">
 
     <div class="pokedex-list" id="pokedexList">
         </div>
@@ -111,24 +114,36 @@
         </div>
 
     <script>
-        // L'URL pour récupérer TOUS les Pokémon (un grand nombre)
+        // L'URL pour récupérer TOUS les Pokémon existants (une grande liste)
         const POKE_API_URL_ALL = 'https://pokeapi.co/api/v2/pokemon?limit=10000'; 
         
+        // Variable globale pour stocker la liste complète des Pokémon chargés (pour la recherche)
+        let listePokemons = [];
+
         // Traduction des Noms de Pokémon (Liste partielle)
         const TRADUCTIONS_FR = {
             'bulbasaur': 'Bulbizarre', 'ivysaur': 'Herbizarre', 'venusaur': 'Florizarre', 
             'charmander': 'Salamèche', 'charmeleon': 'Reptincel', 'charizard': 'Dracaufeu',
             'squirtle': 'Carapuce', 'wartortle': 'Carabaffe', 'blastoise': 'Tortank',
-            'caterpie': 'Chenipan', 'mewtwo': 'Mewtwo', 'mew': 'Mew', 'lugia': 'Lugia' 
-            // NOTE: Les autres noms s'afficheront en anglais (ex: 'Pikachu' est souvent le même)
+            'caterpie': 'Chenipan', 'mewtwo': 'Mewtwo', 'mew': 'Mew', 'lugia': 'Lugia',
+            'pikachu': 'Pikachu', 'raichu': 'Raichu' 
         };
         
-        // Traduction des Types (Liste partielle)
+        // Traduction des Types
         const TYPES_TRADUCTION = {
             'normal': 'Normal', 'fire': 'Feu', 'water': 'Eau', 'grass': 'Plante', 'electric': 'Électrik',
             'ice': 'Glace', 'fighting': 'Combat', 'poison': 'Poison', 'ground': 'Sol', 'flying': 'Vol',
             'psychic': 'Psy', 'bug': 'Insecte', 'rock': 'Roche', 'ghost': 'Spectre', 'dragon': 'Dragon',
             'steel': 'Acier', 'dark': 'Ténèbres', 'fairy': 'Fée'
+        };
+
+        // Traduction des Attaques (Liste partielle)
+        const ATTACKS_TRADUCTION = {
+            'scratch': 'Griffe', 'tackle': 'Charge', 'growl': 'Rugissement',
+            'vine-whip': 'Fouet Lianes', 'razor-leaf': 'Tranch\'Herbe', 'ember': 'Flammèche',
+            'smokescreen': 'Brouillard', 'hydro-pump': 'Hydrocanon', 'water-gun': 'Pistolet à O',
+            'surf': 'Surf', 'thunder-shock': 'Éclair', 'quick-attack': 'Vive-Attaque',
+            'slam': 'Souplesse', 'double-edge': 'Damoclès', 'mega-drain': 'Méga-Sangsue'
         };
 
         // Exécuter la fonction de chargement au démarrage
@@ -139,24 +154,23 @@
          */
         async function chargerPokemons() {
             try {
-                // Requête pour tous les Pokémon
                 const response = await fetch(POKE_API_URL_ALL);
                 const data = await response.json();
                 
-                const listContainer = document.getElementById('pokedexList');
-                
-                // Filtrer les Pokémon qui ont un numéro de Pokédex valide (pour éviter les formes alternatives)
+                // Filtrer les Pokémon qui ont un numéro de Pokédex valide (pour la génération actuelle)
                 const pokemonsFiltres = data.results.filter(p => {
                     const idMatch = p.url.match(/\/(\d+)\/$/);
-                    return idMatch && parseInt(idMatch[1]) <= 1025; // Limite à la génération actuelle + quelques formes
+                    return idMatch && parseInt(idMatch[1]) <= 1025; 
                 });
 
-                // Créer la carte pour chaque Pokémon
+                // SAUVEGARDE LA LISTE COMPLÈTE POUR LA RECHERCHE
+                listePokemons = pokemonsFiltres; 
+                
+                // Afficher tous les Pokémon au démarrage
                 pokemonsFiltres.forEach(pokemon => {
                     creerCartePokemon(pokemon);
                 });
 
-                // Masquer l'écran de chargement après le traitement
                 document.getElementById('loading-overlay').style.display = 'none';
 
             } catch (error) {
@@ -164,6 +178,26 @@
                 document.getElementById('loading-overlay').innerHTML = 
                     '<p style="color:white; text-align:center;">Erreur de connexion à l\'API Pokémon.</p>';
             }
+        }
+        
+        /**
+         * Filtre les Pokémon affichés en fonction de la barre de recherche.
+         */
+        function filtrerPokemons() {
+            const termeRecherche = document.getElementById('searchBar').value.toLowerCase();
+            const liste = document.getElementById('pokedexList');
+            liste.innerHTML = ''; // Efface l'ancienne liste
+
+            listePokemons.forEach(pokemon => {
+                const nomOriginal = pokemon.name;
+                const nomATester = (TRADUCTIONS_FR[nomOriginal] || 
+                                    (nomOriginal.charAt(0).toUpperCase() + nomOriginal.slice(1))).toLowerCase();
+
+                // Inclut le Pokémon si le nom traduit/formaté contient le terme recherché
+                if (nomATester.includes(termeRecherche)) {
+                    creerCartePokemon(pokemon);
+                }
+            });
         }
 
         /**
@@ -195,20 +229,20 @@
             detailsContainer.innerHTML = `<h2>Chargement de ${cardElement.textContent}...</h2>`;
             
             try {
-                // Récupérer les détails de base
+                // Récupérer les détails de base et l'espèce en parallèle
                 const [response, speciesResponse] = await Promise.all([
                     fetch(url),
-                    fetch(url.replace('/pokemon/', '/pokemon-species/')) // URL de l'espèce
+                    fetch(url.replace('/pokemon/', '/pokemon-species/')) 
                 ]);
                 
                 const pokemonData = await response.json();
                 const speciesData = await speciesResponse.json();
                 
-                // Vérification Légendaire
+                // Vérification Légendaire pour la carte
                 if (speciesData.is_legendary || speciesData.is_mythical) {
                     cardElement.classList.add('legendary');
                 } else {
-                    cardElement.classList.remove('legendary'); // S'assurer que le style n'est pas appliqué par erreur
+                    cardElement.classList.remove('legendary');
                 }
                 
                 afficherDetails(pokemonData, speciesData);
@@ -231,10 +265,12 @@
                  return TYPES_TRADUCTION[typeName] || typeName.charAt(0).toUpperCase() + typeName.slice(1);
              }).join(' / ');
              
-             // Attaques (4 premières, nettoyage du format)
-             const attaques = pokemonData.moves.slice(0, 4).map(moveInfo => 
-                 moveInfo.move.name.replace(/-/g, ' ').charAt(0).toUpperCase() + moveInfo.move.name.slice(1)
-             ).join(', ');
+             // TRADUCTION ET FORMATAGE DES ATTAQUES
+             const attaques = pokemonData.moves.slice(0, 4).map(moveInfo => {
+                 const moveName = moveInfo.move.name;
+                 const nomTraduit = ATTACKS_TRADUCTION[moveName] || moveName.replace(/-/g, ' ');
+                 return nomTraduit.charAt(0).toUpperCase() + nomTraduit.slice(1);
+             }).join(', ');
              
              // Traduction du Nom
              const nomOriginal = pokemonData.name;
